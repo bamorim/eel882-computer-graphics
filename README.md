@@ -2,4 +2,6 @@
 
 **Por Bernardo Amorim**
 
-Este repositório contém todo o material gerado por mim para as aulas de Computação Gráfica, na UFRJ
+## Trabalhos
+
+1. [Intersessão de Segmentos de Reta](t01_line_crossing/)
