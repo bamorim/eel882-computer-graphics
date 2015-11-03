@@ -44,29 +44,19 @@ type Action
 
 -- Move currently moving dot to the given point
 move : Point -> Model -> Model
-move p model =
-  case model.moving of
-    Moving Line1 Dot1 -> let
-      line = model.line1
-      newLine = { line | p1 <- p }
-    in
-      { model | line1 <- newLine }
-    Moving Line2 Dot1 -> let
-      line = model.line2
-      newLine = { line | p1 <- p }
-    in
-      { model | line2 <- newLine }
-    Moving Line1 Dot2 -> let
-      line = model.line1
-      newLine = { line | p2 <- p }
-    in
-      { model | line1 <- newLine }
-    Moving Line2 Dot2 -> let
-      line = model.line2
-      newLine = { line | p2 <- p }
-    in
-      { model | line2 <- newLine }
-    _ -> model
+move p model = 
+  let
+    line = case model.moving of
+      Moving Line1 _ -> model.line1
+      _              -> model.line2
+    
+    newLine = case model.moving of
+      Moving _ Dot1 -> { line | p1 <- p }
+      _             -> { line | p2 <- p }
+  in case model.moving of
+    Moving Line1 _ -> { model | line1 <- newLine }
+    Moving Line2 _ -> { model | line2 <- newLine }
+    _              -> model
       
 
 -- Update the model given an action
