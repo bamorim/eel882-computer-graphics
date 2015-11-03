@@ -3,7 +3,7 @@ module LineCrossing where
 -- Imports
 import Svg exposing (Svg, line, svg, g, circle)
 import Svg.Attributes as SVGA
-import Svg.Events exposing (onMouseDown, onMouseUp, onMouseMove)
+import Svg.Events exposing (onMouseDown, onMouseUp, onMouseMove, onClick)
 import Signal exposing (message)
 import Window
 import Mouse
@@ -18,11 +18,12 @@ import List exposing ( append )
 type DotID = Dot1 | Dot2
 
 -- Represents the currently moving dot
-type Moving = NotMoving | Moving Int DotID
+type State = Idle | AddingPoint | Moving Int DotID
 
 type alias Model = {
+  state: State,
   lines: Array Line,
-  moving: Moving
+  firstPointAdding: Maybe Point
 }
 
 initialLine1 : Line
@@ -38,7 +39,7 @@ initialLines : List Line
 initialLines = List.map (\x -> Line (Point x 100) (Point x 250)) initialX
 
 initialModel : Model
-initialModel = Model (fromList initialLines) NotMoving
+initialModel = Model Idle (fromList initialLines) Nothing
 
 -- UPDATE
 
@@ -47,18 +48,22 @@ type Action
   | StartMoving Int DotID
   | Move Int Int
   | StopMoving
+  | StartAdding
+  | AddPoint Int Int
 
 -- Update the model given an action
 update : Action -> Model -> Model
-update action model =
-  case action of
-    StopMoving      -> { model | moving <- NotMoving}
-    StartMoving l d -> { model | moving <- Moving l d }
-    Move x y        -> move (Point (toFloat x) (toFloat y)) model
-    _               -> model
- 
--- Move currently moving dot to the given point
+update action model = case (model.state, action) of
+  (Idle, StartMoving l d)     -> { model | state <- Moving l d }
+  (Idle, StartAdding)         -> { model | state <- AddingPoint }
+  (Moving _ _, StopMoving)    -> { model | state <- Idle}
+  (Moving _ _, Move x y)      -> move (Point (toFloat x) (toFloat y)) model
+  (AddingPoint, AddPoint x y) -> case model.firstPointAdding of
+    Nothing -> { model | firstPointAdding <- Just (Point (toFloat x) (toFloat y)) }
+    Just p  -> { model | state <- Idle, lines <- Array.push (Line p (Point (toFloat x) (toFloat y))) model.lines }
+  _               -> model
 
+-- Move currently moving dot to the given point
 moveLine : Point -> DotID -> Line -> Line
 moveLine p did l = case did of
   Dot1 -> { l | p1 <- p }
@@ -66,7 +71,7 @@ moveLine p did l = case did of
 
 
 move : Point -> Model -> Model
-move p model = case model.moving of
+move p model = case model.state of
  Moving lid did -> case (get lid model.lines) of
    Just l -> { model | lines <- set lid (moveLine p did l) model.lines }
    _      -> model
@@ -74,6 +79,8 @@ move p model = case model.moving of
  
 
 -- VIEW
+actionMessage = Signal.message actions.address
+
 scene : Model -> (Int, Int) -> (Int, Int) -> Html
 scene m (w,h) (x,y) = svg
   [ SVGA.version "1.1",
@@ -81,10 +88,31 @@ scene m (w,h) (x,y) = svg
     SVGA.y "0",
     SVGA.width (toString w),
     SVGA.height (toString h),
-    onMouseUp (Signal.message actions.address StopMoving),
-    onMouseMove (Signal.message actions.address (Move x y))
+    onMouseUp (actionMessage StopMoving),
+    onMouseMove (actionMessage (Move x y)),
+    onClick (actionMessage (AddPoint x y))
   ] 
-  (append (showLines m.lines) (showIntersections m.lines))
+  ( List.concat 
+    [ (showLines m.lines),
+      (showIntersections m.lines),
+      [addButton (w,h)],
+      [ Svg.text'
+        [ SVGA.x "500",
+          SVGA.y "500",
+          SVGA.width "100"
+        ] [ (Svg.text (toString m.state)) ]
+      ]
+    ]
+  )
+
+addButton : (Int,Int) -> Html
+addButton (w,h) = circle
+  [ SVGA.cx (toString (w-10)), 
+    SVGA.cy (toString (h-10)),
+    SVGA.r "8",
+    SVGA.fill "red",
+    onClick (actionMessage StartAdding)
+  ] []
 
 showLines : Array Line -> List Svg
 showLines lines =
@@ -101,9 +129,10 @@ showPoint : Int -> DotID -> Point -> Svg
 showPoint lid did {x, y} = circle 
   [ SVGA.cx (toString x), 
     SVGA.cy (toString y),
-    SVGA.r "4", SVGA.stroke "black",
+    SVGA.r "4",
+    SVGA.stroke "black",
     SVGA.fill "white",
-    onMouseDown (Signal.message actions.address (StartMoving lid did))
+    onMouseDown (actionMessage (StartMoving lid did))
   ] []
 
 showLine : Point -> Point -> Svg
@@ -127,7 +156,8 @@ showIntersection (l1, l2) = case (getIntersection l1 l2) of
   Just {x, y} -> circle
     [ SVGA.cx (toString x), 
       SVGA.cy (toString y),
-      SVGA.r "6", SVGA.stroke "black",
+      SVGA.r "6",
+      SVGA.stroke "black",
       SVGA.fill "red"
     ] []
   _           -> g [] []
