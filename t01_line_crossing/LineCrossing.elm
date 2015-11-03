@@ -7,8 +7,10 @@ import Svg.Events exposing (onMouseDown, onMouseUp, onMouseMove, onClick)
 import Signal exposing (message)
 import Window
 import Mouse
+import Graphics.Collage exposing (collage, toForm)
 import Geometry exposing (getIntersection, Point, Line)
 import Html exposing ( Html )
+import Html.Attributes as HTMLA
 import Array exposing ( Array, fromList, set, get, toIndexedList)
 import List exposing ( append )
 
@@ -60,7 +62,11 @@ update action model = case (model.state, action) of
   (Moving _ _, Move x y)      -> move (Point (toFloat x) (toFloat y)) model
   (AddingPoint, AddPoint x y) -> case model.firstPointAdding of
     Nothing -> { model | firstPointAdding <- Just (Point (toFloat x) (toFloat y)) }
-    Just p  -> { model | state <- Idle, lines <- Array.push (Line p (Point (toFloat x) (toFloat y))) model.lines }
+    Just p  -> { model |
+      firstPointAdding <- Nothing,
+      state <- Idle,
+      lines <- Array.push (Line p (Point (toFloat x) (toFloat y))) model.lines 
+    }
   _               -> model
 
 -- Move currently moving dot to the given point
@@ -81,6 +87,26 @@ move p model = case model.state of
 -- VIEW
 actionMessage = Signal.message actions.address
 
+view : Model -> (Int, Int) -> (Int, Int) -> Html
+view model (w,h) (x,y) = Html.div []
+  [ ( Html.div []
+      [ Html.button [ onClick (actionMessage StartAdding) ] [Html.text "Add"]
+      , Html.text (toString model.state)
+      ]
+    )
+  , ( Html.div
+      [ HTMLA.style 
+        [ ("position", "absolute")
+        , ("top", "10px")
+        , ("bottom", "0")
+        , ("left", "0")
+        , ("right", "0")
+        ]
+      ]
+      [ scene model (w,h-10) (x,y-10) ]
+    )
+  ]
+
 scene : Model -> (Int, Int) -> (Int, Int) -> Html
 scene m (w,h) (x,y) = svg
   [ SVGA.version "1.1",
@@ -94,25 +120,9 @@ scene m (w,h) (x,y) = svg
   ] 
   ( List.concat 
     [ (showLines m.lines),
-      (showIntersections m.lines),
-      [addButton (w,h)],
-      [ Svg.text'
-        [ SVGA.x "500",
-          SVGA.y "500",
-          SVGA.width "100"
-        ] [ (Svg.text (toString m.state)) ]
-      ]
+      (showIntersections m.lines)
     ]
   )
-
-addButton : (Int,Int) -> Html
-addButton (w,h) = circle
-  [ SVGA.cx (toString (w-10)), 
-    SVGA.cy (toString (h-10)),
-    SVGA.r "8",
-    SVGA.fill "red",
-    onClick (actionMessage StartAdding)
-  ] []
 
 showLines : Array Line -> List Svg
 showLines lines =
@@ -167,7 +177,7 @@ showIntersection (l1, l2) = case (getIntersection l1 l2) of
 -- Wire the current model, the window dimensions and mouse position to the scene
 main : Signal Html
 main =
-  Signal.map3 scene model Window.dimensions Mouse.position
+  Signal.map3 view model Window.dimensions Mouse.position
 
 -- Actions from user input
 actions : Signal.Mailbox Action
