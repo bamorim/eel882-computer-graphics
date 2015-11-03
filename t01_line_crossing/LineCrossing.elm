@@ -98,8 +98,8 @@ showIntersection l1 l2 = case (getIntersection l1 l2) of
   Just {x, y} -> circle
     [ SVGA.cx (toString x), 
       SVGA.cy (toString y),
-      SVGA.r "4", SVGA.stroke "black",
-      SVGA.fill "white"
+      SVGA.r "6", SVGA.stroke "black",
+      SVGA.fill "red"
     ] []
   _           -> g [] []
 
@@ -118,7 +118,7 @@ showLine p1 p2 = line
     SVGA.y1 (toString p1.y),
     SVGA.x2 (toString p2.x),
     SVGA.y2 (toString p2.y),
-    SVGA.style "stroke:rgb(255,0,0);stroke-width:1"
+    SVGA.style "stroke:black;stroke-width:1"
   ] []
   
 
