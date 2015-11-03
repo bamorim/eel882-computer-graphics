@@ -42,6 +42,15 @@ type Action
   | Move Int Int
   | StopMoving
 
+-- Update the model given an action
+update : Action -> Model -> Model
+update action model =
+  case action of
+    StopMoving      -> { model | moving <- NotMoving}
+    StartMoving l d -> { model | moving <- Moving l d }
+    Move x y        -> move (Point (toFloat x) (toFloat y)) model
+    _               -> model
+ 
 -- Move currently moving dot to the given point
 move : Point -> Model -> Model
 move p model = 
@@ -58,19 +67,10 @@ move p model =
     Moving Line2 _ -> { model | line2 <- newLine }
     _              -> model
       
-
--- Update the model given an action
-update : Action -> Model -> Model
-update action model =
-  case action of
-    StopMoving      -> { model | moving <- NotMoving}
-    StartMoving l d -> { model | moving <- Moving l d }
-    Move x y        -> move (Point (toFloat x) (toFloat y)) model
-    _               -> model
-  
+ 
 
 -- VIEW
-scene : (Model) -> (Int, Int) -> (Int, Int) -> Html
+scene : Model -> (Int, Int) -> (Int, Int) -> Html
 scene m (w,h) (x,y) = svg
   [ SVGA.version "1.1",
     SVGA.x "0",
@@ -93,16 +93,6 @@ showLineWithHolders lid l = g []
     showPoint lid Dot2 l.p2
   ]
 
-showIntersection : Line -> Line -> Svg
-showIntersection l1 l2 = case (getIntersection l1 l2) of
-  Just {x, y} -> circle
-    [ SVGA.cx (toString x), 
-      SVGA.cy (toString y),
-      SVGA.r "6", SVGA.stroke "black",
-      SVGA.fill "red"
-    ] []
-  _           -> g [] []
-
 showPoint : LineID -> DotID -> Point -> Svg
 showPoint lid did {x, y} = circle 
   [ SVGA.cx (toString x), 
@@ -121,6 +111,16 @@ showLine p1 p2 = line
     SVGA.style "stroke:black;stroke-width:1"
   ] []
   
+
+showIntersection : Line -> Line -> Svg
+showIntersection l1 l2 = case (getIntersection l1 l2) of
+  Just {x, y} -> circle
+    [ SVGA.cx (toString x), 
+      SVGA.cy (toString y),
+      SVGA.r "6", SVGA.stroke "black",
+      SVGA.fill "red"
+    ] []
+  _           -> g [] []
 
 -- INPUTS
  

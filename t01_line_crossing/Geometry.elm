@@ -13,14 +13,14 @@ type alias Line = {
 
 
 -- FUNCTIONS
-pp : Point -> Point -> Point
-pp p1 p2 = Point (p1.x + p2.x) (p1.y + p2.y)
+ps : Point -> Point -> Point
+ps p1 p2 = Point (p1.x + p2.x) (p1.y + p2.y)
 
 pm : Point -> Point -> Point
 pm p1 p2 = Point (p1.x - p2.x) (p1.y - p2.y)
 
-pt : Point -> Float -> Point
-pt {x,y} f = Point (x*f) (y*f)
+pp : Point -> Float -> Point
+pp {x,y} f = Point (x*f) (y*f)
 
 getIntersection : Line -> Line -> Maybe Point
 getIntersection {p1, p2} l2 = let
@@ -32,6 +32,6 @@ getIntersection {p1, p2} l2 = let
     s = (-s1.y * (p1.x - p3.x) + s1.x * (p1.y - p3.y)) / (-s2.x * s1.y + s1.x * s2.y)
     t = ( s2.x * (p1.y - p3.y) - s2.y * (p1.x - p3.x)) / (-s2.x * s1.y + s1.x * s2.y)
   in
-    if (s >= 0 && s <= 1 && t >= 0 && t <= 1) then Just (pp p1 (pt s1 t)) else Nothing
+    if (s >= 0 && s <= 1 && t >= 0 && t <= 1) then Just (ps p1 (pp s1 t)) else Nothing
 
 
