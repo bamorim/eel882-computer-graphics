@@ -9,19 +9,19 @@ import Window
 import Mouse
 import Geometry exposing (getIntersection, Point, Line)
 import Html exposing ( Html )
+import Array exposing ( Array, fromList, set, get, toIndexedList)
+import List exposing ( append )
 
 -- MODEL
 
--- Identifiers to find the exact line and dot
-type LineID = Line1 | Line2
+-- Identifiers to find the exact dot
 type DotID = Dot1 | Dot2
 
 -- Represents the currently moving dot
-type Moving = NotMoving | Moving LineID DotID
+type Moving = NotMoving | Moving Int DotID
 
 type alias Model = {
-  line1: Line,
-  line2: Line,
+  lines: Array Line,
   moving: Moving
 }
 
@@ -31,14 +31,20 @@ initialLine1 = Line (Point 100 100) (Point 100 250)
 initialLine2 : Line
 initialLine2 = Line (Point 250 100) (Point 250 250)
 
+initialX : List Float
+initialX = [50, 100, 150, 200, 250]
+
+initialLines : List Line
+initialLines = List.map (\x -> Line (Point x 100) (Point x 250)) initialX
+
 initialModel : Model
-initialModel = Model initialLine1 initialLine2 NotMoving
+initialModel = Model (fromList initialLines) NotMoving
 
 -- UPDATE
 
 type Action
   = NoOp
-  | StartMoving LineID DotID
+  | StartMoving Int DotID
   | Move Int Int
   | StopMoving
 
@@ -52,21 +58,19 @@ update action model =
     _               -> model
  
 -- Move currently moving dot to the given point
+
+moveLine : Point -> DotID -> Line -> Line
+moveLine p did l = case did of
+  Dot1 -> { l | p1 <- p }
+  Dot2 -> { l | p2 <- p }
+
+
 move : Point -> Model -> Model
-move p model = 
-  let
-    line = case model.moving of
-      Moving Line1 _ -> model.line1
-      _              -> model.line2
-    
-    newLine = case model.moving of
-      Moving _ Dot1 -> { line | p1 <- p }
-      _             -> { line | p2 <- p }
-  in case model.moving of
-    Moving Line1 _ -> { model | line1 <- newLine }
-    Moving Line2 _ -> { model | line2 <- newLine }
-    _              -> model
-      
+move p model = case model.moving of
+ Moving lid did -> case (get lid model.lines) of
+   Just l -> { model | lines <- set lid (moveLine p did l) model.lines }
+   _      -> model
+ _              -> model
  
 
 -- VIEW
@@ -80,20 +84,20 @@ scene m (w,h) (x,y) = svg
     onMouseUp (Signal.message actions.address StopMoving),
     onMouseMove (Signal.message actions.address (Move x y))
   ] 
-  [ showLineWithHolders Line1 m.line1,
-    showLineWithHolders Line2 m.line2,
-    showIntersection m.line1 m.line2
-  ]
+  (append (showLines m.lines) (showIntersections m.lines))
 
+showLines : Array Line -> List Svg
+showLines lines =
+  List.map showLineWithHolders (toIndexedList lines)
 
-showLineWithHolders : LineID -> Line -> Svg
-showLineWithHolders lid l = g []
+showLineWithHolders : (Int, Line) -> Svg
+showLineWithHolders (lid, l) = g []
   [ showLine l.p1 l.p2,
     showPoint lid Dot1 l.p1,
     showPoint lid Dot2 l.p2
   ]
 
-showPoint : LineID -> DotID -> Point -> Svg
+showPoint : Int -> DotID -> Point -> Svg
 showPoint lid did {x, y} = circle 
   [ SVGA.cx (toString x), 
     SVGA.cy (toString y),
@@ -112,8 +116,14 @@ showLine p1 p2 = line
   ] []
   
 
-showIntersection : Line -> Line -> Svg
-showIntersection l1 l2 = case (getIntersection l1 l2) of
+showIntersections : Array Line -> List Svg
+showIntersections lines = List.map showIntersection (combine (Array.toList lines))
+
+combine : List a -> List (a,a)
+combine list = List.concatMap (\a -> (List.map (\b -> (a,b)) list)) list
+
+showIntersection : (Line, Line) -> Svg
+showIntersection (l1, l2) = case (getIntersection l1 l2) of
   Just {x, y} -> circle
     [ SVGA.cx (toString x), 
       SVGA.cy (toString y),
