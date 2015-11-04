@@ -52,10 +52,12 @@ type Action
   | StopMoving
   | StartAdding
   | AddPoint Int Int
+  | Reset
 
 -- Update the model given an action
 update : Action -> Model -> Model
 update action model = case (model.state, action) of
+  (_, Reset)                  -> initialModel
   (Idle, StartMoving l d)     -> { model | state <- Moving l d }
   (Idle, StartAdding)         -> { model | state <- AddingPoint }
   (Moving _ _, StopMoving)    -> { model | state <- Idle}
@@ -91,6 +93,7 @@ view : Model -> (Int, Int) -> (Int, Int) -> Html
 view model (w,h) (x,y) = Html.div []
   [ ( Html.div []
       [ Html.button [ onClick (actionMessage StartAdding) ] [Html.text "Add"]
+      , Html.button [ onClick (actionMessage Reset) ] [Html.text "Reset"]
       , Html.text (toString model.state)
       ]
     )
