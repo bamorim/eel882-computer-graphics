@@ -134,8 +134,8 @@ scene m (w,h) (x,y) = svg
   , onClick (actionMessage (AddPoint x y))
   ] 
   (includeAddingLine (Point (toFloat x) (toFloat y)) m.state ( concat 
-    [ (showLines m.lines)
-    , (showIntersections m.lines)
+    [ (renderLines m.lines)
+    , (renderIntersections m.lines)
     ]
   ))
 
@@ -143,71 +143,70 @@ scene m (w,h) (x,y) = svg
 -- only if you are adding a line
 includeAddingLine : Point -> State -> List Svg -> List Svg
 includeAddingLine p1 state svgs = case state of
-    FinishingLine p2 -> (renderAddingLine p1 p2)::svgs
+    FinishingLine p2 -> (dashedLine (Line p1 p2))::svgs
     _                -> svgs
 
--- Render the dashed line
-renderAddingLine : Point -> Point -> Svg
-renderAddingLine p1 p2 = renderSegment p1 p2
-  [ SVGA.strokeDasharray "5, 5"
-  , SVGA.style "stroke:black;stroke-width:1"
-  ]
-
 -- Render all the lines with their holders and indexed events
-showLines : Array Line -> List Svg
-showLines lines =
-  map showLineWithHolders (toIndexedList lines)
+renderLines : Array Line -> List Svg
+renderLines lines =
+  map renderLineWithHolders (toIndexedList lines)
 
--- Render a given line passing it index forward to the showPoint function
+-- Render a given line passing it index forward to the renderHolder function
 -- so it'll know from what line and what part of the line it belongs
-showLineWithHolders : (Int, Line) -> Svg
-showLineWithHolders (lid, l) = g []
-  [ showLine l.p1 l.p2
-  , showPoint lid Dot1 l.p1
-  , showPoint lid Dot2 l.p2
+renderLineWithHolders : (Int, Line) -> Svg
+renderLineWithHolders (lid, l) = g []
+  [ line' l []
+  , renderHolder lid Dot1 l.p1
+  , renderHolder lid Dot2 l.p2
   ]
 
 -- Renders a line point given the line index and the DotID and
 -- set a mouseDown event that keeps it context information (Line index and DotID)
-showPoint : Int -> DotID -> Point -> Svg
-showPoint lid did {x, y} = circle 
-  [ SVGA.cx (toString x)
-  , SVGA.cy (toString y)
-  , SVGA.r "4"
-  , SVGA.stroke "black"
+renderHolder : Int -> DotID -> Point -> Svg
+renderHolder lid did p = circle' p
+  [ SVGA.r "4"
   , SVGA.fill "white"
   , SVGA.style "cursor:pointer"
   , onMouseDown (actionMessage (StartMoving lid did))
-  ] []
-
--- Renders a line
-showLine : Point -> Point -> Svg
-showLine p1 p2 = renderSegment p1 p2 [ SVGA.style "stroke:black;stroke-width:1" ]
+  ]
 
 -- Render all intersections for the given lines
-showIntersections : Array Line -> List Svg
-showIntersections lines = filterMap showIntersection (pairs (Array.toList lines))
+renderIntersections : Array Line -> List Svg
+renderIntersections lines = filterMap renderIntersection (pairs (Array.toList lines))
 
 -- Given two lines, render a dot in their interssections, if this happens
-showIntersection : (Line, Line) -> Maybe Svg
-showIntersection (l1, l2) = 
-  Maybe.map (\line -> circle
-    [ SVGA.cx (toString line.x)
-    , SVGA.cy (toString line.y)
-    , SVGA.r "6"
-    , SVGA.stroke "black"
+renderIntersection : (Line, Line) -> Maybe Svg
+renderIntersection (l1, l2) = 
+  Maybe.map (\p -> circle' p
+    [ SVGA.r "6"
     , SVGA.fill "red"
-    ] []
+    ]
     ) (getIntersection l1 l2)
 
--- Render a segment between 2 points with some extra attributes
-renderSegment : Point -> Point -> List Svg.Attribute -> Svg
-renderSegment p1 p2 attrs = line (append attrs
-  [ SVGA.x1 (toString p1.x)
-  , SVGA.y1 (toString p1.y)
-  , SVGA.x2 (toString p2.x)
-  , SVGA.y2 (toString p2.y)
+-- SVG abstractions to match some concepts such as rendering points and lines
+
+-- Renders a line
+line' : Line -> List Svg.Attribute -> Svg
+line' l attrs = line (append attrs
+  [ SVGA.x1 (toString l.p1.x)
+  , SVGA.y1 (toString l.p1.y)
+  , SVGA.x2 (toString l.p2.x)
+  , SVGA.y2 (toString l.p2.y)
+  , SVGA.style "stroke:black;stroke-width:1"
   ]) []
+
+-- Render the dashed line
+dashedLine : Line -> Svg
+dashedLine l = line' l [ SVGA.strokeDasharray "5, 5" ]
+
+-- Renders a point as a circle
+circle' : Point -> List Svg.Attribute -> Svg
+circle' p attrs = circle (append attrs
+  [ SVGA.cx (toString p.x)
+  , SVGA.cy (toString p.y)
+  , SVGA.stroke "black"
+  ]) []
+  
 
 -- INPUTS
  
