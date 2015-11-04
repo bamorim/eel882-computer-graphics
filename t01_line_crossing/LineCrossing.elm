@@ -23,9 +23,9 @@ type DotID = Dot1 | Dot2
 type State = Idle | AddingPoint | Moving Int DotID
 
 type alias Model = {
-  state: State,
-  lines: Array Line,
-  firstPointAdding: Maybe Point
+  state: State
+, lines: Array Line
+, firstPointAdding: Maybe Point
 }
 
 initialLine1 : Line
@@ -109,18 +109,18 @@ view model (w,h) (x,y) = Html.div []
 
 scene : Model -> (Int, Int) -> (Int, Int) -> Html
 scene m (w,h) (x,y) = svg
-  [ SVGA.version "1.1",
-    SVGA.x "0",
-    SVGA.y "0",
-    SVGA.width (toString w),
-    SVGA.height (toString h),
-    onMouseUp (actionMessage StopMoving),
-    onMouseMove (actionMessage (Move x y)),
-    onClick (actionMessage (AddPoint x y))
+  [ SVGA.version "1.1"
+  , SVGA.x "0"
+  , SVGA.y "0"
+  , SVGA.width (toString w)
+  , SVGA.height (toString h)
+  , onMouseUp (actionMessage StopMoving)
+  , onMouseMove (actionMessage (Move x y))
+  , onClick (actionMessage (AddPoint x y))
   ] 
   ( List.concat 
-    [ (showLines m.lines),
-      (showIntersections m.lines)
+    [ (showLines m.lines)
+    , (showIntersections m.lines)
     ]
   )
 
@@ -130,28 +130,28 @@ showLines lines =
 
 showLineWithHolders : (Int, Line) -> Svg
 showLineWithHolders (lid, l) = g []
-  [ showLine l.p1 l.p2,
-    showPoint lid Dot1 l.p1,
-    showPoint lid Dot2 l.p2
+  [ showLine l.p1 l.p2
+  , showPoint lid Dot1 l.p1
+  , showPoint lid Dot2 l.p2
   ]
 
 showPoint : Int -> DotID -> Point -> Svg
 showPoint lid did {x, y} = circle 
-  [ SVGA.cx (toString x), 
-    SVGA.cy (toString y),
-    SVGA.r "4",
-    SVGA.stroke "black",
-    SVGA.fill "white",
-    onMouseDown (actionMessage (StartMoving lid did))
+  [ SVGA.cx (toString x)
+  , SVGA.cy (toString y)
+  , SVGA.r "4"
+  , SVGA.stroke "black"
+  , SVGA.fill "white"
+  , onMouseDown (actionMessage (StartMoving lid did))
   ] []
 
 showLine : Point -> Point -> Svg
 showLine p1 p2 = line
-  [ SVGA.x1 (toString p1.x),
-    SVGA.y1 (toString p1.y),
-    SVGA.x2 (toString p2.x),
-    SVGA.y2 (toString p2.y),
-    SVGA.style "stroke:black;stroke-width:1"
+  [ SVGA.x1 (toString p1.x)
+  , SVGA.y1 (toString p1.y)
+  , SVGA.x2 (toString p2.x)
+  , SVGA.y2 (toString p2.y)
+  , SVGA.style "stroke:black;stroke-width:1"
   ] []
   
 
@@ -164,11 +164,11 @@ combine list = List.concatMap (\a -> (List.map (\b -> (a,b)) list)) list
 showIntersection : (Line, Line) -> Svg
 showIntersection (l1, l2) = case (getIntersection l1 l2) of
   Just {x, y} -> circle
-    [ SVGA.cx (toString x), 
-      SVGA.cy (toString y),
-      SVGA.r "6",
-      SVGA.stroke "black",
-      SVGA.fill "red"
+    [ SVGA.cx (toString x)
+    , SVGA.cy (toString y)
+    , SVGA.r "6"
+    , SVGA.stroke "black"
+    , SVGA.fill "red"
     ] []
   _           -> g [] []
 
