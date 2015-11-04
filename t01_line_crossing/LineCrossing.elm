@@ -133,11 +133,27 @@ scene m (w,h) (x,y) = svg
   , onMouseMove (actionMessage (Move x y))
   , onClick (actionMessage (AddPoint x y))
   ] 
-  ( concat 
+  (includeAddingLine (Point (toFloat x) (toFloat y)) m.state ( concat 
     [ (showLines m.lines)
     , (showIntersections m.lines)
     ]
-  )
+  ))
+
+includeAddingLine : Point -> State -> List Svg -> List Svg
+includeAddingLine p1 state svgs = case state of
+    FinishingLine p2 -> (renderAddingLine p1 p2)::svgs
+    _                -> svgs
+
+renderAddingLine : Point -> Point -> Svg
+renderAddingLine p1 p2 = line
+  [ SVGA.x1 (toString p1.x)
+  , SVGA.y1 (toString p1.y)
+  , SVGA.x2 (toString p2.x)
+  , SVGA.y2 (toString p2.y)
+  , SVGA.strokeDasharray "5, 5"
+  , SVGA.style "stroke:black;stroke-width:1"
+  ] []
+ 
 
 -- Render all the lines with their holders and indexed events
 showLines : Array Line -> List Svg
