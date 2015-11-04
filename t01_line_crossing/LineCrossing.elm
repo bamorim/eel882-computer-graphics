@@ -12,7 +12,7 @@ import Geometry exposing (getIntersection, Point, Line)
 import Html exposing ( Html )
 import Html.Attributes as HTMLA
 import Array exposing ( Array, fromList, set, get, toIndexedList)
-import List exposing ( append )
+import List exposing ( drop, map, concat, filterMap, indexedMap, concat )
 
 -- MODEL
 
@@ -38,7 +38,7 @@ initialX : List Float
 initialX = [50, 100, 150, 200, 250]
 
 initialLines : List Line
-initialLines = List.map (\x -> Line (Point x 100) (Point x 250)) initialX
+initialLines = map (\x -> Line (Point x 100) (Point x 250)) initialX
 
 initialModel : Model
 initialModel = Model Idle (fromList initialLines) Nothing
@@ -124,7 +124,7 @@ scene m (w,h) (x,y) = svg
   , onMouseMove (actionMessage (Move x y))
   , onClick (actionMessage (AddPoint x y))
   ] 
-  ( List.concat 
+  ( concat 
     [ (showLines m.lines)
     , (showIntersections m.lines)
     ]
@@ -132,7 +132,7 @@ scene m (w,h) (x,y) = svg
 
 showLines : Array Line -> List Svg
 showLines lines =
-  List.map showLineWithHolders (toIndexedList lines)
+  map showLineWithHolders (toIndexedList lines)
 
 showLineWithHolders : (Int, Line) -> Svg
 showLineWithHolders (lid, l) = g []
@@ -163,22 +163,28 @@ showLine p1 p2 = line
   
 
 showIntersections : Array Line -> List Svg
-showIntersections lines = List.map showIntersection (crossProduct (Array.toList lines) (Array.toList lines))
+showIntersections lines = filterMap showIntersection (combine (Array.toList lines))
 
-crossProduct : List a -> List b -> List (a,b)
-crossProduct list_a list_b = 
-  List.concatMap (\a -> (List.map (\b -> (a,b)) list_b)) list_a
+combine : List a -> List (a,a)
+combine list =
+  list
+    |> indexedMap (\i a ->
+      list
+        |> drop i
+        |> map (\b -> (a,b))
+      )
+    |> concat
 
-showIntersection : (Line, Line) -> Svg
-showIntersection (l1, l2) = case (getIntersection l1 l2) of
-  Just {x, y} -> circle
-    [ SVGA.cx (toString x)
-    , SVGA.cy (toString y)
+showIntersection : (Line, Line) -> Maybe Svg
+showIntersection (l1, l2) = 
+  Maybe.map (\line -> circle
+    [ SVGA.cx (toString line.x)
+    , SVGA.cy (toString line.y)
     , SVGA.r "6"
     , SVGA.stroke "black"
     , SVGA.fill "red"
     ] []
-  _           -> g [] []
+    ) (getIntersection l1 l2)
 
 -- INPUTS
  
