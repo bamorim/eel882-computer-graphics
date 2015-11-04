@@ -16,10 +16,10 @@ import List exposing ( drop, map, concat, filterMap, indexedMap, concat )
 
 -- MODEL
 
--- Identifiers to find the exact dot
+-- Identifiers of the dots on each side of a line
 type DotID = Dot1 | Dot2
 
--- Represents the currently moving dot
+-- Represents the current state of the application
 type State = Idle | AddingPoint | Moving Int DotID
 
 type alias Model = {
@@ -27,12 +27,6 @@ type alias Model = {
   lines: Array Line,
   firstPointAdding: Maybe Point
 }
-
-initialLine1 : Line
-initialLine1 = Line (Point 100 100) (Point 100 250)
-
-initialLine2 : Line
-initialLine2 = Line (Point 250 100) (Point 250 250)
 
 initialX : List Float
 initialX = [50, 100, 150, 200, 250]
@@ -45,6 +39,7 @@ initialModel = Model Idle (fromList initialLines) Nothing
 
 -- UPDATE
 
+-- Defines the types of actions that can occurr
 type Action
   = NoOp
   | StartMoving Int DotID
@@ -54,7 +49,7 @@ type Action
   | AddPoint Int Int
   | Reset
 
--- Update the model given an action
+-- Update the model given an action and the current model
 update : Action -> Model -> Model
 update action model = case (model.state, action) of
   (_, Reset)                  -> initialModel
@@ -71,24 +66,28 @@ update action model = case (model.state, action) of
     }
   _               -> model
 
--- Move currently moving dot to the given point
-moveLine : Point -> DotID -> Line -> Line
-moveLine p did l = case did of
-  Dot1 -> { l | p1 <- p }
-  Dot2 -> { l | p2 <- p }
-
-
+-- Transform the current moving line (from the model) by moving one of 
+-- the dots (defined on the model too) to a given point
 move : Point -> Model -> Model
 move p model = case model.state of
  Moving lid did -> case (get lid model.lines) of
    Just l -> { model | lines <- set lid (moveLine p did l) model.lines }
    _      -> model
  _              -> model
- 
+
+-- Creates a new line with one given dot moved to a given point
+moveLine : Point -> DotID -> Line -> Line
+moveLine p did l = case did of
+  Dot1 -> { l | p1 <- p }
+  Dot2 -> { l | p2 <- p }
 
 -- VIEW
+
+-- A function to create a message to be sent on events describing the action
+actionMessage : Action -> Signal.Message
 actionMessage = Signal.message actions.address
 
+-- Renders the full view of the application
 view : Model -> (Int, Int) -> (Int, Int) -> Html
 view model (w,h) (x,y) = Html.div []
   [ ( Html.div []
@@ -116,6 +115,7 @@ view model (w,h) (x,y) = Html.div []
     )
   ]
 
+-- Renders the svg containing the lines, dots and interssections
 scene : Model -> (Int, Int) -> (Int, Int) -> Html
 scene m (w,h) (x,y) = svg
   [ SVGA.version "1.1"
@@ -133,10 +133,13 @@ scene m (w,h) (x,y) = svg
     ]
   )
 
+-- Render all the lines with their holders and indexed events
 showLines : Array Line -> List Svg
 showLines lines =
   map showLineWithHolders (toIndexedList lines)
 
+-- Render a given line passing it index forward to the showPoint function
+-- so it'll know from what line and what part of the line it belongs
 showLineWithHolders : (Int, Line) -> Svg
 showLineWithHolders (lid, l) = g []
   [ showLine l.p1 l.p2
@@ -144,6 +147,8 @@ showLineWithHolders (lid, l) = g []
   , showPoint lid Dot2 l.p2
   ]
 
+-- Renders a line point given the line index and the DotID and
+-- set a mouseDown event that keeps it context information (Line index and DotID)
 showPoint : Int -> DotID -> Point -> Svg
 showPoint lid did {x, y} = circle 
   [ SVGA.cx (toString x)
@@ -155,6 +160,7 @@ showPoint lid did {x, y} = circle
   , onMouseDown (actionMessage (StartMoving lid did))
   ] []
 
+-- Renders a line
 showLine : Point -> Point -> Svg
 showLine p1 p2 = line
   [ SVGA.x1 (toString p1.x)
@@ -165,11 +171,13 @@ showLine p1 p2 = line
   ] []
   
 
+-- Render all intersections for the given lines
 showIntersections : Array Line -> List Svg
-showIntersections lines = filterMap showIntersection (combine (Array.toList lines))
+showIntersections lines = filterMap showIntersection (pairs (Array.toList lines))
 
-combine : List a -> List (a,a)
-combine list =
+-- Makes all possible pairs of the list (Order does not matter)
+pairs : List a -> List (a,a)
+pairs list =
   list
     |> indexedMap (\i a ->
       list
@@ -178,6 +186,7 @@ combine list =
       )
     |> concat
 
+-- Given two lines, render a dot in their interssections, if this happens
 showIntersection : (Line, Line) -> Maybe Svg
 showIntersection (l1, l2) = 
   Maybe.map (\line -> circle
