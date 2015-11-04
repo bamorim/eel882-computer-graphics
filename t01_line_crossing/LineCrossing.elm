@@ -12,7 +12,7 @@ import Geometry exposing (getIntersection, Point, Line)
 import Html exposing ( Html )
 import Html.Attributes as HTMLA
 import Array exposing ( Array, fromList, set, get, toIndexedList)
-import List exposing ( drop, map, concat, filterMap, indexedMap, concat )
+import List exposing ( drop, map, concat, filterMap, indexedMap, concat, append )
 
 -- MODEL
 
@@ -139,21 +139,19 @@ scene m (w,h) (x,y) = svg
     ]
   ))
 
+-- Includes a dashed line corresponding to the new adding line 
+-- only if you are adding a line
 includeAddingLine : Point -> State -> List Svg -> List Svg
 includeAddingLine p1 state svgs = case state of
     FinishingLine p2 -> (renderAddingLine p1 p2)::svgs
     _                -> svgs
 
+-- Render the dashed line
 renderAddingLine : Point -> Point -> Svg
-renderAddingLine p1 p2 = line
-  [ SVGA.x1 (toString p1.x)
-  , SVGA.y1 (toString p1.y)
-  , SVGA.x2 (toString p2.x)
-  , SVGA.y2 (toString p2.y)
-  , SVGA.strokeDasharray "5, 5"
+renderAddingLine p1 p2 = renderSegment p1 p2
+  [ SVGA.strokeDasharray "5, 5"
   , SVGA.style "stroke:black;stroke-width:1"
-  ] []
- 
+  ]
 
 -- Render all the lines with their holders and indexed events
 showLines : Array Line -> List Svg
@@ -184,29 +182,11 @@ showPoint lid did {x, y} = circle
 
 -- Renders a line
 showLine : Point -> Point -> Svg
-showLine p1 p2 = line
-  [ SVGA.x1 (toString p1.x)
-  , SVGA.y1 (toString p1.y)
-  , SVGA.x2 (toString p2.x)
-  , SVGA.y2 (toString p2.y)
-  , SVGA.style "stroke:black;stroke-width:1"
-  ] []
-  
+showLine p1 p2 = renderSegment p1 p2 [ SVGA.style "stroke:black;stroke-width:1" ]
 
 -- Render all intersections for the given lines
 showIntersections : Array Line -> List Svg
 showIntersections lines = filterMap showIntersection (pairs (Array.toList lines))
-
--- Makes all possible pairs of the list (Order does not matter)
-pairs : List a -> List (a,a)
-pairs list =
-  list
-    |> indexedMap (\i a ->
-      list
-        |> drop i
-        |> map (\b -> (a,b))
-      )
-    |> concat
 
 -- Given two lines, render a dot in their interssections, if this happens
 showIntersection : (Line, Line) -> Maybe Svg
@@ -219,6 +199,15 @@ showIntersection (l1, l2) =
     , SVGA.fill "red"
     ] []
     ) (getIntersection l1 l2)
+
+-- Render a segment between 2 points with some extra attributes
+renderSegment : Point -> Point -> List Svg.Attribute -> Svg
+renderSegment p1 p2 attrs = line (append attrs
+  [ SVGA.x1 (toString p1.x)
+  , SVGA.y1 (toString p1.y)
+  , SVGA.x2 (toString p2.x)
+  , SVGA.y2 (toString p2.y)
+  ]) []
 
 -- INPUTS
  
@@ -234,3 +223,16 @@ actions = Signal.mailbox NoOp
 -- model over time
 model : Signal Model
 model = Signal.foldp update initialModel actions.signal
+
+-- HELPERS
+
+-- Makes all possible pairs of the list (Order does not matter)
+pairs : List a -> List (a,a)
+pairs list =
+  list
+    |> indexedMap (\i a ->
+      list
+        |> drop i
+        |> map (\b -> (a,b))
+      )
+    |> concat
