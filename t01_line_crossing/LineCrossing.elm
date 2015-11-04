@@ -102,6 +102,11 @@ view model (w,h) (x,y) = Html.div []
         , ("left", "0")
         , ("right", "0")
         , ("border-top", "1px solid #000")
+        , ("cursor", case model.state of
+            Moving _ _  -> "pointer"
+            AddingPoint -> "crosshair"
+            _           -> "auto"
+          )
         ]
       ]
       [ scene model (w,h-45) (x,y-41) ]
@@ -143,6 +148,7 @@ showPoint lid did {x, y} = circle
   , SVGA.r "4"
   , SVGA.stroke "black"
   , SVGA.fill "white"
+  , SVGA.style "cursor:pointer"
   , onMouseDown (actionMessage (StartMoving lid did))
   ] []
 
