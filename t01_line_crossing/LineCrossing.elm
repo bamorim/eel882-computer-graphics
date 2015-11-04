@@ -20,12 +20,19 @@ import List exposing ( drop, map, concat, filterMap, indexedMap, concat )
 type DotID = Dot1 | Dot2
 
 -- Represents the current state of the application
-type State = Idle | AddingPoint | Moving Int DotID
+type State 
+  = Idle
+  | AddingLine
+  | FinishingLine Point
+  | Moving Int DotID
+
+
+-- AddingLine Nothing means you are adding the first point
+-- AddingLine (Just p) means you added a first point p and are adding the second
 
 type alias Model = {
   state: State,
-  lines: Array Line,
-  firstPointAdding: Maybe Point
+  lines: Array Line
 }
 
 initialX : List Float
@@ -35,7 +42,7 @@ initialLines : List Line
 initialLines = map (\x -> Line (Point x 100) (Point x 250)) initialX
 
 initialModel : Model
-initialModel = Model Idle (fromList initialLines) Nothing
+initialModel = Model Idle (fromList initialLines)
 
 -- UPDATE
 
@@ -52,19 +59,17 @@ type Action
 -- Update the model given an action and the current model
 update : Action -> Model -> Model
 update action model = case (model.state, action) of
-  (_, Reset)                  -> initialModel
-  (Idle, StartMoving l d)     -> { model | state <- Moving l d }
-  (Idle, StartAdding)         -> { model | state <- AddingPoint }
-  (Moving _ _, StopMoving)    -> { model | state <- Idle}
-  (Moving _ _, Move x y)      -> move (Point (toFloat x) (toFloat y)) model
-  (AddingPoint, AddPoint x y) -> case model.firstPointAdding of
-    Nothing -> { model | firstPointAdding <- Just (Point (toFloat x) (toFloat y)) }
-    Just p  -> { model |
-      firstPointAdding <- Nothing,
-      state <- Idle,
-      lines <- Array.push (Line p (Point (toFloat x) (toFloat y))) model.lines 
-    }
-  _               -> model
+  (_, Reset)                       -> initialModel
+  (Idle, StartMoving l d)          -> { model | state <- Moving l d }
+  (Idle, StartAdding)              -> { model | state <- AddingLine }
+  (Moving _ _, StopMoving)         -> { model | state <- Idle}
+  (Moving _ _, Move x y)           -> move (Point (toFloat x) (toFloat y)) model
+  (AddingLine, AddPoint x y)       -> { model | state <- FinishingLine (Point (toFloat x) (toFloat y)) }
+  (FinishingLine p, AddPoint x y)  -> { model |
+    state <- Idle,
+    lines <- Array.push (Line p (Point (toFloat x) (toFloat y))) model.lines 
+  }
+  _                                -> model
 
 -- Transform the current moving line (from the model) by moving one of 
 -- the dots (defined on the model too) to a given point
@@ -105,9 +110,10 @@ view model (w,h) (x,y) = Html.div []
         , ("right", "0")
         , ("border-top", "1px solid #000")
         , ("cursor", case model.state of
-            Moving _ _  -> "pointer"
-            AddingPoint -> "crosshair"
-            _           -> "auto"
+            Moving _ _      -> "pointer"
+            AddingLine      -> "crosshair"
+            FinishingLine _ -> "crosshair"
+            _               -> "auto"
           )
         ]
       ]
