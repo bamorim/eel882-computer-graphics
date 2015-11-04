@@ -23,9 +23,9 @@ type DotID = Dot1 | Dot2
 type State = Idle | AddingPoint | Moving Int DotID
 
 type alias Model = {
-  state: State
-, lines: Array Line
-, firstPointAdding: Maybe Point
+  state: State,
+  lines: Array Line,
+  firstPointAdding: Maybe Point
 }
 
 initialLine1 : Line
@@ -97,13 +97,14 @@ view model (w,h) (x,y) = Html.div []
   , ( Html.div
       [ HTMLA.style 
         [ ("position", "absolute")
-        , ("top", "10px")
+        , ("top", "40px")
         , ("bottom", "0")
         , ("left", "0")
         , ("right", "0")
+        , ("border-top", "1px solid #000")
         ]
       ]
-      [ scene model (w,h-10) (x,y-10) ]
+      [ scene model (w,h-45) (x,y-41) ]
     )
   ]
 
@@ -156,10 +157,11 @@ showLine p1 p2 = line
   
 
 showIntersections : Array Line -> List Svg
-showIntersections lines = List.map showIntersection (combine (Array.toList lines))
+showIntersections lines = List.map showIntersection (crossProduct (Array.toList lines) (Array.toList lines))
 
-combine : List a -> List (a,a)
-combine list = List.concatMap (\a -> (List.map (\b -> (a,b)) list)) list
+crossProduct : List a -> List b -> List (a,b)
+crossProduct list_a list_b = 
+  List.concatMap (\a -> (List.map (\b -> (a,b)) list_b)) list_a
 
 showIntersection : (Line, Line) -> Svg
 showIntersection (l1, l2) = case (getIntersection l1 l2) of
