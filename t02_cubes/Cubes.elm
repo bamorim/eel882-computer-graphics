@@ -2,7 +2,7 @@ module Cubes where
 
 import Color exposing (Color, toRgb, green)
 import Graphics.Element exposing (Element)
-import Math.Vector3 exposing (Vec3, vec3)
+import Math.Vector3 exposing (Vec3, vec3, add)
 import Math.Matrix4 exposing (Mat4, makeRotate, makePerspective, makeLookAt)
 import WebGL exposing (..)
 
@@ -36,27 +36,27 @@ type alias Model =
   , cubes: List Cube
   }
 
-defaultModel = Model (vec3 0 0 5) [ cube green ]
+defaultModel = Model (vec3 0 0 15) [ cube green ]
 
 cube : Color -> Cube
 cube color = Cube
   (colorToVec color)
-  (vec3 0 0 0)
-  (makeRotate 0 (vec3 1 0 0))
+  (vec3 0 2 0)
+  (makeRotate 0.9 (vec3 1 0 0))
 
 -- VIEW
 
 makeDrawable : Cube -> Drawable Vertex
 makeDrawable cube =
   let
-    rft = vec3  1  1  1   -- right, front, top
-    lft = vec3 -1  1  1   -- left,  front, top
-    lbt = vec3 -1 -1  1
-    rbt = vec3  1 -1  1
-    rbb = vec3  1 -1 -1
-    rfb = vec3  1  1 -1
-    lfb = vec3 -1  1 -1
-    lbb = vec3 -1 -1 -1
+    rft = add cube.position (vec3  1  1  1)   -- right, front, top
+    lft = add cube.position (vec3 -1  1  1)   -- left,  front, top
+    lbt = add cube.position (vec3 -1 -1  1)
+    rbt = add cube.position (vec3  1 -1  1)
+    rbb = add cube.position (vec3  1 -1 -1)
+    rfb = add cube.position (vec3  1  1 -1)
+    lfb = add cube.position (vec3 -1  1 -1)
+    lbb = add cube.position (vec3 -1 -1 -1)
   in Triangle 
     (List.concat 
       [ face cube.color rft rfb rbb rbt   -- right
