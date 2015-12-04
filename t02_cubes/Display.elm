@@ -5,6 +5,7 @@ import WebGL exposing (webgl, Renderable, render, Drawable(Triangle), Shader)
 import Math.Vector3 exposing (Vec3, vec3)
 import Math.Matrix4 exposing (Mat4, makePerspective, makeTranslate, makeLookAt)
 import Model exposing (Model, Object)
+import Array exposing (toList)
 
 type alias Vertex =
   { color: Vec3
@@ -13,13 +14,13 @@ type alias Vertex =
   }
  
 
-view : (Int,Int) -> Element
-view dim = webgl dim (scene dim Model.defaultModel)
+view : (Int,Int) -> Model -> Element
+view dim model = webgl dim (scene dim model)
 
 scene : (Int,Int) -> Model -> List Renderable
 scene dim model = List.map
   (renderCube dim)
-  model.cubes
+  (Array.toList model.cubes)
 
 renderCube : (Int,Int) -> Object -> Renderable
 renderCube dims cube = render vertexShader fragmentShader (cubeToTriangles cube) (uniforms dims cube)

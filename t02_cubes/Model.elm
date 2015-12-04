@@ -1,6 +1,7 @@
 module Model where
 import Math.Vector3 exposing (Vec3, vec3, add)
 import Math.Matrix4 exposing (Mat4, makeRotate)
+import Array exposing (Array, fromList)
 -- UTIL
 
 import Color exposing (Color, toRgb, green)
@@ -21,13 +22,13 @@ type alias Object =
 
 type alias Model =
   {
-    cubes: List Object
+    cubes: Array Object
   }
 
 defaultModel : Model
-defaultModel = Model
+defaultModel = Model (fromList
   [ defaultObject
-  ]
+  ])
 
 defaultObject : Object
 defaultObject = 
@@ -52,3 +53,8 @@ translate ds cube = { cube | position <- (add ds cube.position) }
 rotate : Vec3 -> Float -> Object -> Object
 rotate axis alpha cube = { cube | rotation <- Math.Matrix4.rotate alpha axis cube.rotation }
 
+xrotate : Float -> Object -> Object
+xrotate = rotate (vec3 1 0 0)
+
+yrotate : Float -> Object -> Object
+yrotate = rotate (vec3 0 1 0)
