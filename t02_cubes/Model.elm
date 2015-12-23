@@ -41,7 +41,7 @@ defaultModel =
       , sampleObject2
       ]
     )
-    (Just 1)
+    (Just 0)
 
 sampleObject1 : Object
 sampleObject1 = 

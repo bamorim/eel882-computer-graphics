@@ -43,8 +43,9 @@ renderSelection dim model =
 renderSelected : (Int,Int) -> Object -> Renderable
 renderSelected dim selectedCube =
   let
-      cube = { selectedCube | color <- (vec4 0 0 0 0.5) }
-      shape = (cubeToTriangles 1.1 cube)
+      cube = { selectedCube | color <- (vec4 0.2 0.2 0.2 0.5) }
+      shape = (drawCube 1.1 cube)
+      --shape = (drawSphere 2 cube.color)
   in 
       render
         vertexShader
@@ -59,11 +60,13 @@ renderCubes dim objects =
     (Array.toList objects)
 
 renderCube : (Int,Int) -> Object -> Renderable
-renderCube dims cube = render vertexShader fragmentShader (cubeToTriangles 1.0 cube) (uniforms dims cube)
+renderCube dims cube = render vertexShader fragmentShader (drawCube 1.0 cube) (uniforms dims cube)
 
 -- Create shapes
-cubeToTriangles : Float -> Object -> Drawable Vertex
-cubeToTriangles size cube =
+type alias Square =
+  (Vec3, Vec3, Vec3, Vec3)
+drawCube : Float -> Object -> Drawable Vertex
+drawCube size cube =
   let
     right  = scale size (vec3  1  0  0)
     left   = scale size (vec3 -1  0  0)
@@ -82,17 +85,17 @@ cubeToTriangles size cube =
     lbb = scale size (vec3 -1 -1 -1)
   in Triangle 
     (List.concat 
-      [ face cube.color rft rfb rbb rbt right
-      , face cube.color rft rfb lfb lft front
-      , face cube.color rft lft lbt rbt top
-      , face cube.color rfb lfb lbb rbb bottom
-      , face cube.color lft lfb lbb lbt left
-      , face cube.color rbt rbb lbb lbt back
+      [ face cube.color (rft,rfb,rbb,rbt) right
+      , face cube.color (rft,rfb,lfb,lft) front
+      , face cube.color (rft,lft,lbt,rbt) top
+      , face cube.color (rfb,lfb,lbb,rbb) bottom
+      , face cube.color (lft,lfb,lbb,lbt) left
+      , face cube.color (rbt,rbb,lbb,lbt) back
       ]
     )
 
-face : Vec4 -> Vec3 -> Vec3 -> Vec3 -> Vec3 -> Vec3 -> List (Vertex, Vertex, Vertex)
-face color a b c d normal =
+face : Vec4 -> Square -> Vec3 -> List (Vertex, Vertex, Vertex)
+face color (a,b,c,d) normal =
   let
     vertex position =
         Vertex color position normal
@@ -100,6 +103,72 @@ face color a b c d normal =
     [ (vertex a, vertex b, vertex c)
     , (vertex c, vertex d, vertex a)
     ]
+
+type alias ParametricFunction =
+  (Float,Float) -> (Float,Float,Float)
+
+type alias Range = (Float,Float)
+
+-- The parametric function for the sphere
+sphere : Float -> ParametricFunction
+sphere r (t,p) =
+  ( r*sin(t)*cos(p)
+  , r*sin(t)*sin(p)
+  , r*cos(t)
+  )
+
+-- Get the shpere drawable
+drawSphere : Float -> Vec4 -> Drawable Vertex
+drawSphere r color =
+  drawParametric
+    color
+    (sphere r)
+    (sphere r)
+    (0,pi)
+    (0,2*pi)
+    20
+    40
+
+range : Int -> Int -> List Int
+range from to = if from < to then from :: (range (from+1) to) else []
+
+combine : List a -> List b -> List (a,b)
+combine xs ys =
+  List.concatMap (\x -> List.map (\y -> (x,y)) ys) xs
+
+drawParametric : Vec4 -> ParametricFunction -> ParametricFunction -> Range -> Range -> Int -> Int -> Drawable Vertex
+drawParametric color fn normalFn (x1,x2) (y1,y2) xslices yslices =
+  let
+      tripleToVec = (\(a,b,c) -> vec3 a b c)
+      fn' = fn >> tripleToVec
+      normalFn' = normalFn >> tripleToVec
+
+      dx = (x2-x1)/(toFloat xslices)
+      dy = (y2-y1)/(toFloat yslices)
+
+      xs = (range 0 xslices)
+        |> List.map toFloat
+        |> List.map (\i -> x1 + i*dx)
+      ys = (range 0 yslices)
+        |> List.map toFloat
+        |> List.map (\i -> y1 + i*dy)
+
+      startingPoints = combine xs ys
+
+      pointToFace (x,y) = face
+        color
+        ( fn' (x,y)
+        , fn' (x+dx,y)
+        , fn' (x+dx,y+dy)
+        , fn' (x,y+dy)
+        )
+        ( normalFn' (x+dx/2,y+dy/2) )
+
+      faces = startingPoints
+        |> List.map pointToFace
+
+  in
+      Triangle (List.concat faces)
 
 -- Rendering Math
 
